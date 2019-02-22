@@ -103,7 +103,7 @@
     "port": 3001,
     "routes": [
       {
-        "uuid": "",
+        "uuid": "6e07e360-0126-11e9-9518-0b13aac74cb1",
         "documentation": "",
         "method": "get",
         "endpoint": "",

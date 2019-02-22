@@ -1,5 +1,4 @@
-import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
-import { AngularFirestore } from '@angular/fire/firestore';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { NgbTooltipConfig } from '@ng-bootstrap/ng-bootstrap';
 import 'brace';
 import 'brace/ext/searchbox';
@@ -13,6 +12,7 @@ import { ipcRenderer, remote, shell } from 'electron';
 import * as mimeTypes from 'mime-types';
 import { DragulaService } from 'ng2-dragula';
 import * as path from 'path';
+import { Observable } from 'rxjs';
 import { ContextMenuItemPayload } from 'src/app/components/context-menu.component';
 import { Config } from 'src/app/config';
 import { AnalyticsEvents } from 'src/app/enums/analytics-events.enum';
@@ -23,6 +23,7 @@ import { EnvironmentsService } from 'src/app/services/environments.service';
 import { ContextMenuEventType, EventsService } from 'src/app/services/events.service';
 import { ServerService } from 'src/app/services/server.service';
 import { UpdateService } from 'src/app/services/update.service';
+import { EnvironmentsStore, EnvironmentsStoreType } from 'src/app/stores/environments.store';
 import { DataSubjectType } from 'src/app/types/data.type';
 import { CurrentEnvironmentType, EnvironmentsType, EnvironmentType } from 'src/app/types/environment.type';
 import { headerNames, headerValues, methods, mimeTypesWithTemplating, RouteType, statusCodes, statusCodesExplanation } from 'src/app/types/route.type';
@@ -35,7 +36,8 @@ type TabsNameType = 'RESPONSE' | 'HEADERS' | 'ENV_SETTINGS' | 'ENV_LOGS';
 
 @Component({
   selector: 'app-root',
-  templateUrl: './app.component.html'
+  templateUrl: './app.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AppComponent implements OnInit {
   @ViewChild('routesMenu') private routesMenu: ElementRef;
@@ -69,6 +71,9 @@ export class AppComponent implements OnInit {
   public clearEnvironmentLogsTimeout: NodeJS.Timer;
   public environmentLogs = this.serverService.environmentsLogs;
   public appVersion = appVersion;
+  public environments$: Observable<EnvironmentsStoreType>;
+  public activeEnvironment$: Observable<EnvironmentType>;
+  public activeRoute$: Observable<RouteType>;
   private settingsModalOpened = false;
   private dialog = remote.dialog;
   private BrowserWindow = remote.BrowserWindow;
@@ -85,7 +90,7 @@ export class AppComponent implements OnInit {
     private config: NgbTooltipConfig,
     private dragulaService: DragulaService,
     private analyticsService: AnalyticsService,
-    private angularFirestore: AngularFirestore
+    private environmentsStore: EnvironmentsStore
   ) {
     // tooltip config
     this.config.container = 'body';
@@ -116,9 +121,7 @@ export class AppComponent implements OnInit {
           }
           break;
         case 'DELETE_ENVIRONMENT':
-          if (this.currentEnvironment) {
-            this.removeEnvironment(this.currentEnvironment.index);
-          }
+          this.removeEnvironment();
           break;
         case 'DELETE_ROUTE':
           if (this.currentRoute) {
@@ -127,22 +130,22 @@ export class AppComponent implements OnInit {
           break;
         case 'PREVIOUS_ENVIRONMENT':
           if (this.currentEnvironment) {
-            this.selectEnvironment(this.currentEnvironment.index - 1);
+            // TODO using new move reducer action this.selectEnvironmentOLD(this.currentEnvironment.index - 1);
           }
           break;
         case 'NEXT_ENVIRONMENT':
           if (this.currentEnvironment) {
-            this.selectEnvironment(this.currentEnvironment.index + 1);
+            // TODO using new move reducer action this.selectEnvironmentOLD(this.currentEnvironment.index + 1);
           }
           break;
         case 'PREVIOUS_ROUTE':
           if (this.currentRoute) {
-            this.selectRoute(this.currentRoute.index - 1);
+            // TODO using new move reducer action this.selectRouteOLD(this.currentRoute.index - 1);
           }
           break;
         case 'NEXT_ROUTE':
           if (this.currentRoute) {
-            this.selectRoute(this.currentRoute.index + 1);
+            // TODO using new move reducer action this.selectRouteOLD(this.currentRoute.index + 1);
           }
           break;
         case 'OPEN_SETTINGS':
@@ -154,7 +157,7 @@ export class AppComponent implements OnInit {
         case 'IMPORT_FILE':
           this.environmentsService.importEnvironmentsFile(() => {
             if (!this.currentEnvironment) {
-              this.selectEnvironment(0);
+              this.selectEnvironmentOLD(0);
             }
           });
           break;
@@ -181,11 +184,15 @@ export class AppComponent implements OnInit {
       this.eventsService.analyticsEvents.next(AnalyticsEvents.PAGEVIEW);
       this.eventsService.analyticsEvents.next(AnalyticsEvents.APPLICATION_START);
 
-      this.selectEnvironment(0);
+      this.selectEnvironmentOLD(0);
     });
 
-    this.environmentsService.selectEnvironment.subscribe((environmentIndex: number) => {
-      this.selectEnvironment(environmentIndex);
+    this.environments$ = this.environmentsStore.selectEnvironments();
+    this.activeEnvironment$ = this.environmentsStore.selectActiveEnvironment();
+    this.activeRoute$ = this.environmentsStore.selectActiveRoute();
+
+    this.environmentsService.selectEnvironment$.subscribe((environmentIndex: number) => {
+      this.selectEnvironmentOLD(environmentIndex);
     });
 
     this.alerts = this.alertService.alerts;
@@ -268,14 +275,14 @@ export class AppComponent implements OnInit {
         arrayMove.mut(this.environments, movedItem.sourceIndex, movedItem.targetIndex);
 
         const selectedEnvironmentIndex = this.environmentsService.findEnvironmentIndex(this.currentEnvironment.environment.uuid);
-        this.selectEnvironment(selectedEnvironmentIndex);
+        this.selectEnvironmentOLD(selectedEnvironmentIndex);
 
         this.environmentUpdated('envReorder', true);
       } else if (movedItem.name === 'routesContainer') {
         arrayMove.mut(this.currentEnvironment.environment.routes, movedItem.sourceIndex, movedItem.targetIndex);
 
         const selectedRouteIndex = this.environmentsService.findRouteIndex(this.currentEnvironment.environment, this.currentRoute.route.uuid);
-        this.selectRoute(selectedRouteIndex);
+        // TODO using new move reducer action this.selectRouteOLD(selectedRouteIndex);
 
         this.environmentUpdated('routeReorder', true);
       }
@@ -289,7 +296,7 @@ export class AppComponent implements OnInit {
   public toggleEnvironment(environment: EnvironmentType) {
     if (environment) {
       if (environment.running) {
-        this.serverService.stop(environment);
+        this.serverService.stop(environment.uuid);
 
         this.eventsService.analyticsEvents.next(AnalyticsEvents.SERVER_STOP);
 
@@ -307,13 +314,24 @@ export class AppComponent implements OnInit {
     }
   }
 
-  public selectEnvironment(environmentIndex: number) {
+  public selectEnvironment(environmentUUID: string) {
+    this.environmentsService.setActiveEnvironment(environmentUUID);
+
+    // auto scroll routes to top when navigating environments
+    if (this.routesMenu) {
+      this.routesMenu.nativeElement.scrollTop = 0;
+    }
+
+    this.eventsService.analyticsEvents.next(AnalyticsEvents.NAVIGATE_ENVIRONMENT);
+  }
+
+  public selectEnvironmentOLD(environmentUUID: number) {
     // check if selection exists
-    if (environmentIndex >= 0 && environmentIndex <= (this.environments.length - 1)) {
-      this.currentEnvironment = { environment: this.environments[environmentIndex], index: environmentIndex };
+    if (environmentUUID >= 0 && environmentUUID <= (this.environments.length - 1)) {
+      this.currentEnvironment = { environment: this.environments[environmentUUID], index: environmentUUID };
 
       // select first route
-      this.selectRoute(0);
+      // this.selectRouteOLD(0);
 
       // auto scroll routes to top when navigating environments
       if (this.routesMenu) {
@@ -340,41 +358,33 @@ export class AppComponent implements OnInit {
     }
   }
 
-  public selectRoute(routeIndex: number) {
-    // check if selection exists
-    if (this.currentEnvironment.environment.routes.length > 0 && routeIndex >= 0 && routeIndex <= (this.currentEnvironment.environment.routes.length - 1)) {
-      // go on first tab when switching route
-      this.currentTab = 'RESPONSE';
+  public selectRoute(routeUUID: string) {
+    this.environmentsService.setActiveRoute(routeUUID);
 
-      this.currentRoute = { route: this.currentEnvironment.environment.routes[routeIndex], index: routeIndex };
+    // go on first tab when switching route
+    this.currentTab = 'RESPONSE';
 
-      this.changeEditorSettings();
+    this.changeEditorSettings();
 
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.NAVIGATE_ROUTE);
-    } else {
-      this.currentTab = 'ENV_SETTINGS';
-      this.currentRoute = null;
-    }
+    this.eventsService.analyticsEvents.next(AnalyticsEvents.NAVIGATE_ROUTE);
   }
 
+  /**
+   * Create a new environment. Append at the end of the list.
+   */
   public addEnvironment() {
-    const index = this.environmentsService.addEnvironment();
-
-    this.selectEnvironment(index);
+    this.environmentsService.addEnvironment();
 
     this.scrollToBottom(this.environmentsMenu.nativeElement);
   }
 
+  /**
+   * Create a new route in the current environment. Append at the end of the list
+   */
   public addRoute() {
-    if (this.currentEnvironment) {
-      this.environmentUpdated('addRoute', false);
+    this.environmentsService.addRoute();
 
-      const index = this.environmentsService.addRoute(this.currentEnvironment.environment);
-
-      this.selectRoute(index);
-
-      this.scrollToBottom(this.routesMenu.nativeElement);
-    }
+    this.scrollToBottom(this.routesMenu.nativeElement);
   }
 
 
@@ -421,42 +431,26 @@ export class AppComponent implements OnInit {
       // if there is still something to navigate to, navigate
       if (this.currentEnvironment.environment.routes.length > 0) {
         // select previous route or index 0 if currently on 0
-        this.selectRoute((routeIndex === 0) ? 0 : routeIndex - 1);
+        // TODO implements directly in remove reducer this.selectRouteOLD((routeIndex === 0) ? 0 : routeIndex - 1);
       } else {
         this.currentTab = 'ENV_SETTINGS';
         this.currentRoute = null;
       }
     } else if (routeIndex < this.currentRoute.index) {
       // if an above route, select minus 1
-      this.selectRoute(this.currentRoute.index - 1);
+      // TODO implements directly in remove reducer this.selectRouteOLD(this.currentRoute.index - 1);
     }
   }
 
   /**
    * Remove environment and navigate depending on remaining environments
    *
-   * @param environmentIndex
+   * @param environmentUUID
    */
-  private removeEnvironment(environmentIndex: number) {
-    this.environmentsService.removeEnvironment(environmentIndex);
+  private removeEnvironment(environmentUUID?: string) {
+    this.environmentsService.removeEnvironment(environmentUUID);
 
     this.eventsService.analyticsEvents.next(AnalyticsEvents.DELETE_ENVIRONMENT);
-
-    // if same environment than deleted one
-    if (environmentIndex === this.currentEnvironment.index) {
-      // if there is still something to navigate to, navigate
-      if (this.environments.length > 0) {
-        // select previous environment or index 0 if currently on 0
-        this.selectEnvironment((environmentIndex === 0) ? 0 : environmentIndex - 1);
-      } else {
-        // navigate to nothing
-        this.currentEnvironment = null;
-        this.currentRoute = null;
-      }
-    } else if (environmentIndex < this.currentEnvironment.index) {
-      // if an above environment, select minus 1
-      this.selectEnvironment(this.currentEnvironment.index - 1);
-    }
   }
 
   /**
@@ -562,7 +556,10 @@ export class AppComponent implements OnInit {
    * Set editor mode depending on content type
    */
   private changeEditorSettings() {
-    const contentType = this.environmentsService.getRouteContentType(this.currentEnvironment.environment, this.currentRoute.route);
+    /* const contentType = this.environmentsService.getRouteContentType(
+      this.environmentsStore.getActiveEnvironment(),
+      this.environmentsStore.getActiveRoute()
+    );
 
     if (contentType === 'application/json') {
       this.editorConfig.mode = 'json';
@@ -574,7 +571,7 @@ export class AppComponent implements OnInit {
       this.editorConfig.mode = 'css';
     } else {
       this.editorConfig.mode = 'text';
-    }
+    } */
   }
 
   /**
@@ -582,7 +579,7 @@ export class AppComponent implements OnInit {
    *
    * @param event - click event
    */
-  public navigationContextMenu(subject: DataSubjectType, subjectId: number, event: any) {
+  public navigationContextMenu(subject: DataSubjectType, subjectUUID: string, event: any) {
     // if right click display context menu
     if (event && event.which === 3) {
       const menu: ContextMenuEventType = {
@@ -592,7 +589,7 @@ export class AppComponent implements OnInit {
             payload: {
               subject,
               action: 'duplicate',
-              subjectId
+              subjectUUID
             },
             label: 'Duplicate ' + subject,
             icon: 'content_copy'
@@ -601,7 +598,7 @@ export class AppComponent implements OnInit {
             payload: {
               subject,
               action: 'export',
-              subjectId
+              subjectUUID
             },
             label: 'Copy to clipboard (JSON)',
             icon: 'assignment'
@@ -610,7 +607,7 @@ export class AppComponent implements OnInit {
             payload: {
               subject,
               action: 'delete',
-              subjectId
+              subjectUUID
             },
             label: 'Delete ' + subject,
             icon: 'delete',
@@ -629,7 +626,7 @@ export class AppComponent implements OnInit {
             payload: {
               subject,
               action: 'env_logs',
-              subjectId
+              subjectUUID
             },
             label: 'Environment logs',
             icon: 'history'
@@ -638,7 +635,7 @@ export class AppComponent implements OnInit {
             payload: {
               subject,
               action: 'env_settings',
-              subjectId
+              subjectUUID
             },
             label: 'Environment settings',
             icon: 'settings',
@@ -656,33 +653,33 @@ export class AppComponent implements OnInit {
    */
   public navigationContextMenuItemClicked(payload: ContextMenuItemPayload) {
     switch (payload.action) {
-      case 'env_logs':
-        if (payload.subjectId !== this.currentEnvironment.index) {
-          this.selectEnvironment(payload.subjectId);
+      /* case 'env_logs':
+        if (payload.subjectUUID !== this.currentEnvironment.index) {
+          this.selectEnvironmentOLD(payload.subjectUUID);
         }
         this.setCurrentTab('ENV_LOGS');
         break;
       case 'env_settings':
-        if (payload.subjectId !== this.currentEnvironment.index) {
-          this.selectEnvironment(payload.subjectId);
+        if (payload.subjectUUID !== this.currentEnvironment.index) {
+          this.selectEnvironmentOLD(payload.subjectUUID);
         }
         this.setCurrentTab('ENV_SETTINGS');
         break;
       case 'duplicate':
         if (payload.subject === 'route') {
-          this.duplicateRoute(payload.subjectId);
+          this.duplicateRoute(payload.subjectUUID);
         } else if (payload.subject === 'environment') {
-          this.duplicateEnvironment(payload.subjectId);
+          this.duplicateEnvironment(payload.subjectUUID);
         }
         break;
       case 'export':
-        this.exportToClipboard(payload.subject, payload.subjectId);
-        break;
+        this.exportToClipboard(payload.subject, payload.subjectUUID);
+        break; */
       case 'delete':
         if (payload.subject === 'route') {
-          this.removeRoute(payload.subjectId);
+          // this.removeRoute(payload.subjectUUID);
         } else if (payload.subject === 'environment') {
-          this.removeEnvironment(payload.subjectId);
+          this.removeEnvironment(payload.subjectUUID);
         }
         break;
     }
@@ -693,7 +690,7 @@ export class AppComponent implements OnInit {
    */
   public duplicateEnvironment(environmentIndex: number) {
     const index = this.environmentsService.duplicateEnvironment(environmentIndex);
-    this.selectEnvironment(index);
+    this.selectEnvironmentOLD(index);
 
     // auto scroll environments to bottom when adding
     this.environmentsMenu.nativeElement.scrollTop = this.environmentsMenu.nativeElement.scrollHeight;
@@ -704,7 +701,7 @@ export class AppComponent implements OnInit {
    */
   public duplicateRoute(routeIndex: number) {
     const index = this.environmentsService.duplicateRoute(this.currentEnvironment.environment, routeIndex);
-    this.selectRoute(index);
+    this.selectRouteOLD(index);
 
     // auto scroll routes to bottom when adding
     this.routesMenu.nativeElement.scrollTop = this.routesMenu.nativeElement.scrollHeight;

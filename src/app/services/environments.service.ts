@@ -14,14 +14,41 @@ import { AlertService } from 'src/app/services/alert.service';
 import { DataService } from 'src/app/services/data.service';
 import { EventsService } from 'src/app/services/events.service';
 import { SettingsService } from 'src/app/services/settings.service';
+import { EnvironmentsStore } from 'src/app/stores/environments.store';
 import { DataSubjectType, ExportType } from 'src/app/types/data.type';
 import { CurrentEnvironmentType, EnvironmentsType, EnvironmentType } from 'src/app/types/environment.type';
 import { CORSHeaders, HeaderType, RouteType } from 'src/app/types/route.type';
 import * as uuid from 'uuid/v1';
 
+/**
+ * WIP
+ *
+ * TODO
+ *
+ * review all actions for envs:
+ * - add new DONE
+ * - select active DONE
+ * - remove WIP
+ * - duplicate
+ * - move (dragula)
+ *
+ * review all actions for routes:
+ * - add route DONE
+ * - select route DONE
+ * - remove route
+ * - duplicate
+ * - create when no environment
+ * - move (dragula)
+ *
+ * misc:
+ * - subscribe to store in order to save instead of triggering an envupdate event
+ */
+
+
 @Injectable()
 export class EnvironmentsService {
-  public selectEnvironment: Subject<number> = new Subject<number>();
+  public selectEnvironment$: Subject<number> = new Subject<number>();
+  // TODO remove and replace by a subscription:
   public environmentUpdateEvents: Subject<{
     environment?: EnvironmentType
   }> = new Subject<{
@@ -81,7 +108,8 @@ export class EnvironmentsService {
     private alertService: AlertService,
     private dataService: DataService,
     private eventsService: EventsService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private environmentsStore: EnvironmentsStore
   ) {
     // get existing environments from storage or default one
     storage.get(this.storageKey, (error, environments) => {
@@ -93,14 +121,18 @@ export class EnvironmentsService {
         this.environments = [defaultEnvironment];
 
         this.updateRoutesTotal();
+        this.environmentsStore.setInitialState(this.environments);
 
-        this.environmentsReady.next(true);
+        // this.environmentsReady.next(true);
       } else {
         // wait for settings to be ready before migrating and loading envs
         this.settingsService.settingsReady.subscribe((ready) => {
           if (ready) {
-            this.environments = this.migrateData(environments);
-            this.environmentsReady.next(true);
+            const migratedData = this.migrateData(environments);
+            this.environments = migratedData;
+            // this.environmentsReady.next(true);
+
+            this.environmentsStore.setInitialState(migratedData);
           }
         });
       }
@@ -123,12 +155,23 @@ export class EnvironmentsService {
     });
   }
 
+  public setActiveEnvironment(environmentUUID: string) {
+    if (this.environmentsStore.getActiveEnvironments().activeEnvironmentUUID !== environmentUUID) {
+      this.environmentsStore.update({ type: 'SET_ACTIVE_ENVIRONMENT', uuid: environmentUUID });
+    }
+  }
+
+  public setActiveRoute(routeUUID: string) {
+    if (this.environmentsStore.getActiveEnvironments().activeRouteUUID !== routeUUID) {
+      this.environmentsStore.update({ type: 'SET_ACTIVE_ROUTE', uuid: routeUUID });
+    }
+  }
+
   /**
-   * Add a new environment and save it
+   * Add a new environment and save it in the store
    *
    */
-  public addEnvironment(): number {
-    const newRoute = Object.assign({}, this.routeSchema, { headers: [Object.assign({}, this.routeHeadersSchema, { uuid: uuid() })] });
+  public addEnvironment() {
     const newEnvironment = Object.assign(
       {},
       this.environmentSchema,
@@ -137,36 +180,37 @@ export class EnvironmentsService {
         name: 'New environment',
         port: 3000,
         routes: [
-          newRoute
+          Object.assign(
+            {},
+            this.routeSchema,
+            { headers: [Object.assign({}, this.routeHeadersSchema, { uuid: uuid() })] }
+          )
         ],
         modifiedAt: new Date(),
         headers: [{ uuid: uuid(), key: 'Content-Type', value: 'application/json' }]
       }
     );
 
-    const newEnvironmentIndex = this.environments.push(newEnvironment) - 1;
-
+    this.environmentsStore.update({ type: 'ADD_ENVIRONMENT', item: newEnvironment });
     this.eventsService.analyticsEvents.next(AnalyticsEvents.CREATE_ENVIRONMENT);
 
     this.environmentUpdateEvents.next({ environment: newEnvironment });
-
-    return newEnvironmentIndex;
   }
 
   /**
-   * Add a new route and save it
-   *
-   * @param environment - environment to which add a route
+   * Add a new route and save it in the store
    */
-  public addRoute(environment: EnvironmentType): number {
-    const newRoute = Object.assign({}, this.routeSchema, { uuid: uuid(), headers: [Object.assign({}, this.routeHeadersSchema, { uuid: uuid() })] });
-    const newRouteIndex = environment.routes.push(newRoute) - 1;
+  public addRoute() {
+    const newRoute = Object.assign(
+      {},
+      this.routeSchema,
+      { uuid: uuid(), headers: [Object.assign({}, this.routeHeadersSchema, { uuid: uuid() })] }
+    );
 
+    this.environmentsStore.update({ type: 'ADD_ROUTE', item: newRoute });
     this.eventsService.analyticsEvents.next(AnalyticsEvents.CREATE_ROUTE);
 
-    this.environmentUpdateEvents.next({ environment });
-
-    return newRouteIndex;
+    this.environmentUpdateEvents.next({});
   }
 
   /**
@@ -189,18 +233,25 @@ export class EnvironmentsService {
   }
 
   /**
-   * Remove an environment and save
-   *
-   * @param environmentIndex - environment index to remove
+   * Remove an environment or the current one if not environmentUUID is provided
    */
-  public removeEnvironment(environmentIndex: number) {
-    this.eventsService.environmentDeleted.emit(this.environments[environmentIndex]);
+  public removeEnvironment(environmentUUID?: string) {
+    const currentEnvironmentUUID = this.environmentsStore.getActiveEnvironmentUUID();
 
-    // delete the environment
-    this.environments.splice(environmentIndex, 1);
+    if (!environmentUUID) {
+      if (!currentEnvironmentUUID) {
+        return;
+      }
+      environmentUUID = this.environmentsStore.getActiveEnvironmentUUID();
+    }
+
+    this.eventsService.environmentDeleted.emit(environmentUUID);
+
+    this.environmentsStore.update({ type: 'REMOVE_ENVIRONMENT', uuid: environmentUUID });
 
     this.checkEnvironmentsDuplicates();
 
+    // TODO move
     this.environmentUpdateEvents.next({});
   }
 
@@ -508,7 +559,7 @@ export class EnvironmentsService {
 
         // if only one environment ask for selection of the one just created
         if (this.environments.length === 1) {
-          this.selectEnvironment.next(0);
+          this.selectEnvironment$.next(0);
         }
 
         this.alertService.showAlert('success', Messages.IMPORT_ENVIRONMENT_CLIPBOARD_SUCCESS);
@@ -518,7 +569,7 @@ export class EnvironmentsService {
         if (this.environments.length === 0) {
           const newEnvironmentIndex = this.addEnvironment();
 
-          this.selectEnvironment.next(newEnvironmentIndex);
+          this.selectEnvironment$.next(0);
           this.environments[0].routes = [];
 
           currentEnvironmentIndex = 0;
