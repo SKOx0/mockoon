@@ -14,11 +14,11 @@ export const Config = {
   exportSalt: '6f5h8q9z32f1d5s4z86q',
   maxLogsPerEnvironment: 50,
   firebaseConfig: {
-    apiKey: 'AIzaSyCIkzTtimLebXjf-gfCQ6iwCVFsYRhCRvs',
-    authDomain: 'mockoon-ba3e2.firebaseapp.com',
-    databaseURL: 'https://mockoon-ba3e2.firebaseio.com',
-    projectId: 'mockoon-ba3e2',
-    storageBucket: 'mockoon-ba3e2.appspot.com',
-    messagingSenderId: '902702764744'
+    apiKey: 'AIzaSyBGrKdFZrNddA4lgINYnJX3OjpJSLFPcGY',
+    authDomain: 'mockin-faccc.firebaseapp.com',
+    databaseURL: 'https://mockin-faccc.firebaseio.com',
+    projectId: 'mockin-faccc',
+    storageBucket: 'mockin-faccc.appspot.com',
+    messagingSenderId: '299161309374'
   }
 };
