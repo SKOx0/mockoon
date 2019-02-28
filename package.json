@@ -1,5 +1,5 @@
 {
-  "name": "mockoon",
+  "name": "mockin",
   "description": "Mock API in seconds",
   "version": "1.3.0",
   "author": {
@@ -9,10 +9,9 @@
   },
   "license": "MIT",
   "repository": "https://github.com/255kb/mockoon",
-  "homepage": "https://mockoon.com",
   "build": {
-    "appId": "com.mockoon.app",
-    "productName": "Mockoon",
+    "appId": "com.mockin.app",
+    "productName": "Mockin",
     "directories": {
       "output": "packages",
       "app": "dist"
@@ -23,12 +22,12 @@
       "rfc3161TimeStampServer": "http://sha256timestamp.ws.symantec.com/sha256/timestamp"
     },
     "nsis": {
-      "artifactName": "mockoon.setup.${version}.${ext}"
+      "artifactName": "mockin.setup.${version}.${ext}"
     },
     "mac": {
       "target": "dmg",
       "type": "distribution",
-      "artifactName": "mockoon.setup.${version}.${ext}"
+      "artifactName": "mockin.setup.${version}.${ext}"
     },
     "linux": {
       "target": "AppImage",
@@ -70,7 +69,7 @@
     "electron-json-storage": "4.1.0",
     "electron-window-state": "5.0.3",
     "express": "4.16.4",
-    "firebase": "5.6.0",
+    "firebase": "^5.6.0",
     "http-proxy-middleware": "0.19.1",
     "killable": "1.0.1",
     "lodash": "4.17.11",
@@ -83,6 +82,7 @@
     "request": "2.88.0",
     "rxjs": "6.3.3",
     "semver": "5.6.0",
+    "sequelize": "^4.42.1",
     "spinthatshit": "1.0.4",
     "uuid": "3.3.2",
     "zone.js": "0.8.26"
@@ -90,11 +90,10 @@
   "devDependencies": {
     "@angular-builders/custom-webpack": "7.0.0",
     "@angular-builders/dev-server": "7.0.0",
-    "@angular-devkit/build-angular": "0.11.0",
+    "@angular-devkit/build-angular": "^0.13.3",
     "@angular-devkit/core": "7.1.0",
     "@angular/cli": "7.1.0",
-    "@angular/compiler-cli": "7.1.1",
-    "@angular/fire": "5.1.1",
+    "@angular/compiler-cli": "^7.2.7",
     "@angular/language-service": "7.1.1",
     "@types/chai": "4.1.7",
     "@types/chai-as-promised": "7.1.0",

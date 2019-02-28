@@ -6,7 +6,6 @@ import * as fs from 'fs';
 import { cloneDeep } from 'lodash';
 import { Subject } from 'rxjs/internal/Subject';
 import { debounceTime } from 'rxjs/operators';
-import { AnalyticsEvents } from 'src/app/enums/analytics-events.enum';
 import { Errors } from 'src/app/enums/errors.enum';
 import { Messages } from 'src/app/enums/messages.enum';
 import { Migrations } from 'src/app/libs/migrations.lib';
@@ -137,7 +136,7 @@ export class EnvironmentsService {
       this.environmentSchema,
       {
         uuid: uuid(),
-        name: 'New environment',
+        name: 'Novo acesso',
         port: 3000,
         routes: [
           newRoute
@@ -148,8 +147,6 @@ export class EnvironmentsService {
     );
 
     const newEnvironmentIndex = this.environments.push(newEnvironment) - 1;
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.CREATE_ENVIRONMENT);
 
     this.environmentUpdateEvents.next({ environment: newEnvironment });
 
@@ -164,8 +161,6 @@ export class EnvironmentsService {
   public addRoute(environment: EnvironmentType): number {
     const newRoute = Object.assign({}, this.routeSchema, { uuid: uuid(), headers: [Object.assign({}, this.routeHeadersSchema, { uuid: uuid() })] });
     const newRouteIndex = environment.routes.push(newRoute) - 1;
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.CREATE_ROUTE);
 
     this.environmentUpdateEvents.next({ environment });
 
@@ -183,8 +178,6 @@ export class EnvironmentsService {
     environment.routes.splice(routeIndex, 1);
 
     this.checkRoutesDuplicates(environment);
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.DELETE_ROUTE);
 
     this.environmentUpdateEvents.next({
       environment
@@ -393,8 +386,6 @@ export class EnvironmentsService {
 
     const newEnvironmentIndex = this.environments.push(newEnvironment) - 1;
 
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.DUPLICATE_ENVIRONMENT);
-
     this.environmentUpdateEvents.next({ environment: newEnvironment });
 
     return newEnvironmentIndex;
@@ -413,8 +404,6 @@ export class EnvironmentsService {
     newRoute = this.renewUUIDs(newRoute, 'route') as RouteType;
 
     const newRouteIndex = environment.routes.push(newRoute) - 1;
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.DUPLICATE_ROUTE);
 
     this.environmentUpdateEvents.next({ environment });
 
@@ -447,7 +436,6 @@ export class EnvironmentsService {
           } else {
             this.alertService.showAlert('success', Messages.EXPORT_SUCCESS);
 
-            this.eventsService.analyticsEvents.next(AnalyticsEvents.EXPORT_FILE);
           }
         });
       } catch (error) {
@@ -466,7 +454,6 @@ export class EnvironmentsService {
       // reset environment before exporting (cannot export running env with server instance)
       clipboard.writeText(this.dataService.wrapExport({ ...cloneDeep(this.environments[environmentIndex]), ...this.environmentResetSchema }, 'environment'));
       this.alertService.showAlert('success', Messages.EXPORT_ENVIRONMENT_CLIPBOARD_SUCCESS);
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.EXPORT_CLIPBOARD);
     } catch (error) {
       this.alertService.showAlert('error', Errors.EXPORT_ENVIRONMENT_CLIPBOARD_ERROR);
     }
@@ -482,7 +469,6 @@ export class EnvironmentsService {
     try {
       clipboard.writeText(this.dataService.wrapExport(this.environments[environmentIndex].routes[routeIndex], 'route'));
       this.alertService.showAlert('success', Messages.EXPORT_ROUTE_CLIPBOARD_SUCCESS);
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.EXPORT_CLIPBOARD);
     } catch (error) {
       this.alertService.showAlert('error', Errors.EXPORT_ROUTE_CLIPBOARD_ERROR);
     }
@@ -541,7 +527,6 @@ export class EnvironmentsService {
         environment: (currentEnvironment) ? currentEnvironment.environment : null
       });
 
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.IMPORT_CLIPBOARD);
     } catch (error) {
       if (!importData) {
         this.alertService.showAlert('error', Errors.IMPORT_CLIPBOARD_WRONG_CHECKSUM);
@@ -589,8 +574,6 @@ export class EnvironmentsService {
             this.environmentUpdateEvents.next({});
 
             this.alertService.showAlert('success', Messages.IMPORT_SUCCESS);
-
-            this.eventsService.analyticsEvents.next(AnalyticsEvents.IMPORT_FILE);
 
             callback();
           }

@@ -1,5 +1,4 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { AnalyticsEvents } from 'src/app/enums/analytics-events.enum';
 import { EventsService } from 'src/app/services/events.service';
 import { ServerService } from 'src/app/services/server.service';
 import { headerNames, HeaderType, headerValues } from 'src/app/types/route.type';
@@ -37,8 +36,6 @@ export class HeadersListComponent implements OnInit {
       this.headersList.push({ uuid: uuid(), key: '', value: '' });
       this.headersUpdated.emit();
 
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.CREATE_HEADER);
-
       this.headerAdded.emit();
     }
   }
@@ -55,8 +52,6 @@ export class HeadersListComponent implements OnInit {
 
     if (headerIndex > -1) {
       this.headersList.splice(headerIndex, 1);
-
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.DELETE_HEADER);
     }
     this.headersUpdated.emit();
   }

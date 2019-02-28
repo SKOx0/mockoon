@@ -45,7 +45,7 @@ function createWindow() {
     minHeight: 768,
     width: mainWindowState.width,
     height: mainWindowState.height,
-    title: `Mockoon`,
+    title: `Mockin`,
     backgroundColor: '#252830',
     icon: path.join(__dirname, '/icon_512x512x32.png')
   };
@@ -88,30 +88,10 @@ function createWindow() {
     {
       label: 'Application',
       submenu: [
-        {
-          label: 'Mockoon website', click: function () {
-            shell.openExternal('https://mockoon.com');
-          }
-        },
-        {
-          label: 'Tutorials', click: function () {
-            shell.openExternal('https://mockoon.com/tutorials');
-          }
-        },
-        {
-          label: 'Send feedback', click: function () {
-            shell.openExternal('https://github.com/255kb/mockoon/issues');
-          }
-        },
         { type: 'separator' },
         {
           label: 'Settings', click: function () {
             mainWindow.webContents.send('keydown', { action: 'OPEN_SETTINGS' });
-          }
-        },
-        {
-          label: 'Help', click: function () {
-            shell.openExternal('https://github.com/255kb/mockoon/wiki');
           }
         },
         { type: 'separator' },

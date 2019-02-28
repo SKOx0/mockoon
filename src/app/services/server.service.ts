@@ -7,7 +7,6 @@ import * as https from 'https';
 import * as killable from 'killable';
 import * as path from 'path';
 import { Config } from 'src/app/config';
-import { AnalyticsEvents } from 'src/app/enums/analytics-events.enum';
 import { Errors } from 'src/app/enums/errors.enum';
 import { DummyJSONParser } from 'src/app/libs/dummy-helpers.lib';
 import { AlertService } from 'src/app/services/alert.service';
@@ -70,7 +69,6 @@ export class ServerService {
     });
 
     // apply latency, cors, routes and proxy to express server
-    this.analytics(server);
     this.rewriteUrl(server);
     this.parseBody(server);
     this.logRequests(server, environment);
@@ -118,19 +116,6 @@ export class ServerService {
       return true;
     }
     return false;
-  }
-
-  /**
-   * Send event for all entering requests
-   *
-   * @param server - express instance
-   */
-  private analytics(server: any) {
-    server.use((req, res, next) => {
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.SERVER_ENTERING_REQUEST);
-
-      next();
-    });
   }
 
   /**

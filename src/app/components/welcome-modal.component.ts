@@ -1,6 +1,5 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { AnalyticsEvents } from 'src/app/enums/analytics-events.enum';
 import { EventsService } from 'src/app/services/events.service';
 import { SettingsService, SettingsType } from 'src/app/services/settings.service';
 
@@ -36,6 +35,5 @@ export class WelcomeModalComponent implements OnInit {
 
   public closeModal() {
     this.modalService.dismissAll();
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.APPLICATION_FIRST_LOAD);
   }
 }

@@ -1,9 +1,0 @@
-<ng-container *ngIf="bannerData?.enabled">
-  <span [ngClass]="bannerData.classes" [ngStyle]="bannerData.styles" (click)="openLink()">
-    <span *ngIf="bannerData.iconName">
-      <i class="material-icons">{{bannerData.iconName}}</i>
-    </span>
-    {{bannerData.text}}
-  </span>
-  <span class="text-secondary" (click)="dismissBanner()"><i class="material-icons">close</i></span>
-</ng-container>

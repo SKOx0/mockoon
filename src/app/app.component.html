@@ -9,32 +9,6 @@
     <!-- First row: logo / env name +start / env port + prefix -->
     <div class="header">
       <div class="row">
-        <div class="col-2 menu-columns--width">
-          <div class="logo"></div>
-        </div>
-
-        <div class="col-2 menu-columns--width">
-          <div *ngIf="!currentEnvironment" class="input-group">
-            <span class="input-group-prepend">
-              <button class="btn btn-link text-muted" type="button">
-                <i class="material-icons">play_arrow</i>
-              </button>
-            </span>
-            <input type="text" class="form-control" placeholder="No environment" disabled>
-          </div>
-          <div *ngIf="currentEnvironment">
-            <div class="input-group">
-              <span class="input-group-prepend">
-                <button class="btn btn-link" type="button" [ngClass]="{'text-success': !currentEnvironment.environment.running && !currentEnvironment.environment.needRestart, 'text-danger': currentEnvironment.environment.running && !currentEnvironment.environment.needRestart, 'text-warning': currentEnvironment.environment.running && currentEnvironment.environment.needRestart}" (click)="toggleEnvironment(currentEnvironment.environment)">
-                  <i class="material-icons" *ngIf="currentEnvironment.environment.running && currentEnvironment.environment.needRestart" ngbTooltip="Server needs restart">refresh</i>
-                  <i class="material-icons" *ngIf="currentEnvironment.environment.running && !currentEnvironment.environment.needRestart" ngbTooltip="Stop server">stop</i>
-                  <i class="material-icons" *ngIf="!currentEnvironment.environment.running" ngbTooltip="Start server">play_arrow</i>
-                </button>
-              </span>
-              <input type="text" class="form-control" name="environment.name" [(ngModel)]="currentEnvironment.environment.name" (ngModelChange)="environmentUpdated('name')">
-            </div>
-          </div>
-        </div>
 
         <div class="col-4">
           <div *ngIf="currentEnvironment">
@@ -60,17 +34,6 @@
             </div>
           </div>
         </div>
-
-        <div class="col">
-          <ng-container *ngIf="currentEnvironment">
-            <div class="btn btn-link btn-icon float-right" [ngClass]="{'active': currentTab === 'ENV_SETTINGS'}" (click)="setCurrentTab('ENV_SETTINGS')" ngbTooltip="Environment settings" placement="left">
-              <i class="material-icons">settings</i>
-            </div>
-            <div class="btn btn-link btn-icon float-right" [ngClass]="{'active': currentTab === 'ENV_LOGS'}" (click)="setCurrentTab('ENV_LOGS')" ngbTooltip="Environment logs" placement="left">
-              <i class="material-icons">history</i>
-            </div>
-          </ng-container>
-        </div>
       </div>
     </div>
 
@@ -86,7 +49,7 @@
             <ul class="nav flex-column">
               <li class="nav-item">
                 <a class="nav-link text-primary" (click)="addEnvironment()">
-                  <i class="material-icons">add_circle</i> Add environment
+                  <i class="material-icons">add_circle</i> Adicionar acesso
                 </a>
               </li>
             </ul>
@@ -151,9 +114,9 @@
                   <li class="nav-item" *ngIf="currentRoute">
                     <a class="nav-link" [ngClass]="{'active': currentTab === 'RESPONSE'}" (click)="setCurrentTab('RESPONSE')">Response & Body</a>
                   </li>
-                  <li class="nav-item" *ngIf="currentRoute">
+                  <!-- <li class="nav-item" *ngIf="currentRoute">
                     <a class="nav-link" [ngClass]="{'active': currentTab === 'HEADERS'}" (click)="setCurrentTab('HEADERS')">Headers <i *ngIf="hasEnvironmentHeaders(currentEnvironment.environment)" class="material-icons text-purple" ngbTooltip="Some environment headers are defined">featured_play_list</i></a>
-                  </li>
+                  </li> -->
                 </ul>
               </div>
             </div>
@@ -178,18 +141,6 @@
           <div [hidden]="currentTab !== 'RESPONSE'" class="tab-content mt-3 pr-2 ml-2 mb-2 h-100">
             <div class="row h-100">
               <div class="col d-flex flex-column">
-                <!-- Documentation -->
-                <div class="row">
-                  <div class="col">
-                    <div class="form-row" *ngIf="currentRoute">
-                      <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Documentation" ValidPath name="route.documentation" [(ngModel)]="currentRoute.route.documentation"
-                          (ngModelChange)="environmentUpdated('documentation')">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 <div class="row" *ngIf="currentRoute">
                   <div class="col">
                     <div class="title-separator has-icon">
@@ -245,39 +196,6 @@
                   </div>
                 </div>
 
-                <div class="row">
-                  <div class="col">
-                    <div class="title-separator has-icon" *ngIf="currentRoute">
-                      <div class="title-separator-icon text-secondary"><i class="material-icons">insert_drive_file</i></div>
-                      <div class="title-separator-text"><div>File </div><div>Selecting a file will automatically serve its content with the detected Content-Type</div></div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- body: file -->
-                <div class="row">
-                  <div class="col">
-                    <div class="form-inline" *ngIf="currentRoute">
-                      <div class="input-group col-9">
-                        <div class="input-group-prepend">
-                          <button class="btn btn-link" (click)="browseFiles()"><i class="material-icons">find_in_page</i></button>
-                        </div>
-                        <input type="text" class="form-control" name="route.file" [(ngModel)]="currentRoute.route.file && currentRoute.route.file.path" (ngModelChange)="onFileInputChange($event)">
-                        <div class="input-group-prepend">
-                          <span *ngIf="currentRoute.route.file" class="input-group-text text-danger" (click)="deleteFile()" ngbTooltip="Remove file serving">
-                            <i class="material-icons">clear</i>
-                          </span>
-                        </div>
-                      </div>
-                      <div class="form-group col-3">
-                        <div *ngIf="currentRoute.route.file" class="custom-control custom-checkbox">
-                          <input type="checkbox" class="custom-control-input" id="UseAsBody" name="UseAsBody" [(ngModel)]="currentRoute.route.file.sendAsBody" (ngModelChange)="environmentUpdated('fileSendAsBody')">
-                          <label class="custom-control-label" for="UseAsBody">Send as body</label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
                 <div class="row">
                   <div class="col">
                     <div>
@@ -406,9 +324,6 @@
           <div class="footer-item with-border-right" (click)="openChangelogModal()" ngbTooltip="View changelog" placement="right">v{{appVersion}}</div>
           <div class="footer-item with-border-right" *ngIf="updateAvailable">
             <button class="btn btn-xs btn-success" (click)="applyUpdate()"><i class="material-icons material-icons-xs">update</i> New version available, click to {{(platform === 'win32') ? 'apply' : 'download'}}</button>
-          </div>
-          <div class="footer-item with-border-right">
-            <app-banner></app-banner>
           </div>
           <div class="footer-item float-right with-border-left" (click)="openFeedbackLink()"><i class="material-icons">feedback</i> Send feedback</div>
         </div>

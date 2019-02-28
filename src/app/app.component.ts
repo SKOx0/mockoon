@@ -14,10 +14,7 @@ import { DragulaService } from 'ng2-dragula';
 import * as path from 'path';
 import { ContextMenuItemPayload } from 'src/app/components/context-menu.component';
 import { Config } from 'src/app/config';
-import { AnalyticsEvents } from 'src/app/enums/analytics-events.enum';
 import { Alert, AlertService } from 'src/app/services/alert.service';
-import { AnalyticsService } from 'src/app/services/analytics.service';
-import { AuthService } from 'src/app/services/auth.service';
 import { EnvironmentsService } from 'src/app/services/environments.service';
 import { ContextMenuEventType, EventsService } from 'src/app/services/events.service';
 import { ServerService } from 'src/app/services/server.service';
@@ -79,11 +76,9 @@ export class AppComponent implements OnInit {
     private serverService: ServerService,
     private alertService: AlertService,
     private updateService: UpdateService,
-    private authService: AuthService,
     private eventsService: EventsService,
     private config: NgbTooltipConfig,
-    private dragulaService: DragulaService,
-    private analyticsService: AnalyticsService
+    private dragulaService: DragulaService
   ) {
     // tooltip config
     this.config.container = 'body';
@@ -167,17 +162,8 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.analyticsService.init();
-
-    // auth anonymously through firebase
-    this.authService.auth();
-
     this.environmentsService.environmentsReady.subscribe((ready: true) => {
       this.environments = this.environmentsService.environments;
-
-      // send first GA requests when env are ready
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.PAGEVIEW);
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.APPLICATION_START);
 
       this.selectEnvironment(0);
     });
@@ -289,18 +275,14 @@ export class AppComponent implements OnInit {
       if (environment.running) {
         this.serverService.stop(environment);
 
-        this.eventsService.analyticsEvents.next(AnalyticsEvents.SERVER_STOP);
-
         if (environment.needRestart) {
           this.serverService.start(environment);
-          this.eventsService.analyticsEvents.next(AnalyticsEvents.SERVER_RESTART);
         }
 
         // if stopping or restarting, restart is not needed
         environment.needRestart = false;
       } else {
         this.serverService.start(environment);
-        this.eventsService.analyticsEvents.next(AnalyticsEvents.SERVER_START);
       }
     }
   }
@@ -317,8 +299,6 @@ export class AppComponent implements OnInit {
       if (this.routesMenu) {
         this.routesMenu.nativeElement.scrollTop = 0;
       }
-
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.NAVIGATE_ENVIRONMENT);
     }
   }
 
@@ -347,8 +327,6 @@ export class AppComponent implements OnInit {
       this.currentRoute = { route: this.currentEnvironment.environment.routes[routeIndex], index: routeIndex };
 
       this.changeEditorSettings();
-
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.NAVIGATE_ROUTE);
     } else {
       this.currentTab = 'ENV_SETTINGS';
       this.currentRoute = null;
@@ -438,8 +416,6 @@ export class AppComponent implements OnInit {
   private removeEnvironment(environmentIndex: number) {
     this.environmentsService.removeEnvironment(environmentIndex);
 
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.DELETE_ENVIRONMENT);
-
     // if same environment than deleted one
     if (environmentIndex === this.currentEnvironment.index) {
       // if there is still something to navigate to, navigate
@@ -471,8 +447,6 @@ export class AppComponent implements OnInit {
       routeUrl += this.currentRoute.route.endpoint;
 
       shell.openExternal(routeUrl);
-
-      this.eventsService.analyticsEvents.next(AnalyticsEvents.LINK_ROUTE_IN_BROWSER);
     }
   }
 
@@ -532,28 +506,16 @@ export class AppComponent implements OnInit {
     return this.serverService.isValidURL(URL);
   }
 
-  public openFeedbackLink() {
-    shell.openExternal(Config.feedbackLink);
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.LINK_FEEDBACK);
-  }
-
   public openChangelogModal() {
     this.eventsService.changelogModalEvents.next(true);
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.LINK_RELEASE);
   }
 
   public openWikiLink(linkName: string) {
     shell.openExternal(Config.wikiLinks[linkName]);
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.LINK_WIKI);
   }
 
   public applyUpdate() {
     this.updateService.applyUpdate();
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.LINK_APPLY_UPDATE);
   }
 
   /**

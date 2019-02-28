@@ -3,7 +3,6 @@ import { Component, ElementRef, EventEmitter, OnInit, Output, ViewChild } from '
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { shell } from 'electron';
 import { Config } from 'src/app/config';
-import { AnalyticsEvents } from 'src/app/enums/analytics-events.enum';
 import { EventsService } from 'src/app/services/events.service';
 const appVersion = require('../../../package.json').version;
 
@@ -32,8 +31,6 @@ export class ChangelogModalComponent implements OnInit {
   }
 
   public openReleaseLink() {
-    shell.openExternal(Config.githubTagReleaseUrl + appVersion);
-
-    this.eventsService.analyticsEvents.next(AnalyticsEvents.LINK_RELEASE);
+    shell.openExternal(Config.githubTagReleaseUrl + appVersion);1
   }
 }
